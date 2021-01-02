@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 	_ "image/gif"
 	_ "image/jpeg"
 	"image/png"
@@ -38,7 +39,13 @@ type LastFMResponse struct {
 	} `json:"topalbums"`
 }
 
-const DefaultGrid = 16
+type AlbumCoverDownloaderResponse struct {
+	Idx int
+	Img image.Image
+	Err error
+}
+
+const DefaultGrid = 49
 const LastFmApiUrl = "https://ws.audioscrobbler.com/2.0"
 const DefaultPeriod = "12month"
 const LastFMApiKey = ""
@@ -113,33 +120,54 @@ func getCollageFromData(albums []Album) (*image.RGBA, error) {
 
 	img := image.NewRGBA(image.Rectangle{upLeft, lowRight})
 
-	for i := 0; i < DefaultGrid; i++ {
-		albumCoverURL := albums[i].Image[len(albums[i].Image)-1].URL
-		albumCover, err := getImageFromURL(albumCoverURL)
+	c := make(chan AlbumCoverDownloaderResponse)
+	go downloadAlbumCovers(albums, c)
 
-		if err != nil {
-			return nil, err
+	for imgDownloadRespnose := range c {
+		if imgDownloadRespnose.Err != nil {
+			return nil, imgDownloadRespnose.Err
 		}
 
-		currentRow := i / albumsPerRow
-		currentColumn := i % albumsPerRow
+		idx := imgDownloadRespnose.Idx
 
-		fmt.Printf("🎇 %s: currentRow: %d   currentColumn: %d\n image: %s \n", albums[i].Name, currentRow, currentColumn, albumCoverURL)
+		currentRow := idx / albumsPerRow
+		currentColumn := idx % albumsPerRow
 
-		for y := 0; y < albumCoverSize; y++ {
-			for x := 0; x < albumCoverSize; x++ {
-				img.Set(x+(currentColumn*albumCoverSize), y+(currentRow*albumCoverSize), albumCover.At(x, y))
-			}
-		}
-		albumLabel := albums[i].Name
-		artistlabel := albums[i].Artist.Name
-		playCountlabel := fmt.Sprintf("Plays: %d", albums[i].PlayCount)
+		fmt.Printf("🎇 %s: currentRow: %d   currentColumn: %d\n image: %s \n", albums[idx].Name, currentRow, currentColumn, "NOT_FOUND")
+
+		// for y := 0; y < albumCoverSize; y++ {
+		// 	for x := 0; x < albumCoverSize; x++ {
+		// 		img.Set(x+(currentColumn*albumCoverSize), y+(currentRow*albumCoverSize), imgDownloadRespnose.Img.At(x, y))
+		// 	}
+		// }
+		startingPoint := image.Point{currentColumn * albumCoverSize, currentRow * albumCoverSize}
+		endingPoint := image.Point{albumCoverSize + (currentColumn * albumCoverSize), albumCoverSize + (currentRow * albumCoverSize)}
+		r := image.Rectangle{startingPoint, endingPoint}
+		draw.Draw(img, r, imgDownloadRespnose.Img, imgDownloadRespnose.Img.Bounds().Min, draw.Src)
+
+		albumLabel := albums[idx].Name
+		artistlabel := albums[idx].Artist.Name
+		playCountlabel := fmt.Sprintf("Plays: %d", albums[idx].PlayCount)
 		addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+10, albumLabel)
 		addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+22, artistlabel)
 		addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+34, playCountlabel)
 	}
 
 	return img, nil
+}
+
+func downloadAlbumCovers(albums []Album, c chan<- AlbumCoverDownloaderResponse) {
+	for idx, album := range albums {
+		albumCoverURL := album.Image[len(album.Image)-1].URL
+		img, err := getImageFromURL(albumCoverURL)
+		c <- AlbumCoverDownloaderResponse{
+			Img: img,
+			Err: err,
+			Idx: idx,
+		}
+	}
+	fmt.Println("Downloaded everything")
+	close(c)
 }
 
 func getImageFromURL(url string) (image.Image, error) {
