@@ -45,7 +45,7 @@ type AlbumCoverDownloaderResponse struct {
 	Err error
 }
 
-const DefaultGrid = 49
+const DefaultGrid = 25
 const LastFmApiUrl = "https://ws.audioscrobbler.com/2.0"
 const DefaultPeriod = "12month"
 const LastFMApiKey = ""
@@ -133,7 +133,8 @@ func getCollageFromData(albums []Album) (*image.RGBA, error) {
 		currentRow := idx / albumsPerRow
 		currentColumn := idx % albumsPerRow
 
-		fmt.Printf("🎇 %s: currentRow: %d   currentColumn: %d\n image: %s \n", albums[idx].Name, currentRow, currentColumn, "NOT_FOUND")
+		fmt.Printf("\"%s\",", albums[idx].Image[len(albums[idx].Image)-1].URL)
+		// fmt.Printf("🎇 %s: currentRow: %d   currentColumn: %d\n image: %s \n", albums[idx].Name, currentRow, currentColumn, "NOT_FOUND")
 
 		// for y := 0; y < albumCoverSize; y++ {
 		// 	for x := 0; x < albumCoverSize; x++ {
@@ -144,6 +145,14 @@ func getCollageFromData(albums []Album) (*image.RGBA, error) {
 		endingPoint := image.Point{albumCoverSize + (currentColumn * albumCoverSize), albumCoverSize + (currentRow * albumCoverSize)}
 		r := image.Rectangle{startingPoint, endingPoint}
 		draw.Draw(img, r, imgDownloadRespnose.Img, imgDownloadRespnose.Img.Bounds().Min, draw.Src)
+
+		// Draw a shadow behind the text
+		textShadow := image.Rectangle{
+			Min: startingPoint,
+			Max: image.Point{endingPoint.X, currentRow*albumCoverSize + 38},
+		}
+		shadowColor := color.NRGBA{0, 0, 0, 60}
+		draw.Draw(img, textShadow, &image.Uniform{shadowColor}, image.ZP, draw.Over)
 
 		albumLabel := albums[idx].Name
 		artistlabel := albums[idx].Artist.Name
