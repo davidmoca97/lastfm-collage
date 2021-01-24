@@ -10,13 +10,14 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	"image/png"
+	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 
+	"github.com/golang/freetype"
+	"github.com/golang/freetype/truetype"
 	"github.com/gorilla/mux"
-	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
-	"golang.org/x/image/math/fixed"
 )
 
 type Album struct {
@@ -49,9 +50,16 @@ const DefaultGrid = 25
 const LastFmApiUrl = "https://ws.audioscrobbler.com/2.0"
 const DefaultPeriod = "12month"
 const LastFMApiKey = ""
-const albumCoverSize = 300
+const AlbumCoverSize = 300
+const FontFile = "Lato-Medium.ttf"
+
+var font *truetype.Font
 
 func main() {
+	if err := initializeFont(); err != nil {
+		log.Println("Error loading font:", err)
+		return
+	}
 	router := mux.NewRouter()
 	router.HandleFunc("/", index)
 	router.HandleFunc("/collage", getCollage).Methods(http.MethodGet)
@@ -76,10 +84,6 @@ func getCollage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// s, _ := json.MarshalIndent(&topAlbums, "", "   ")
-	// w.Header().Add("Content-Type", "application/json")
-	// w.Write(s)
 
 	img, err := getCollageFromData(topAlbums)
 	if err != nil {
@@ -112,7 +116,7 @@ func getURL(username string) string {
 
 func getCollageFromData(albums []Album) (*image.RGBA, error) {
 	albumsPerRow := int(math.Sqrt(float64(DefaultGrid)))
-	width := albumsPerRow * albumCoverSize
+	width := albumsPerRow * AlbumCoverSize
 	height := width
 
 	upLeft := image.Point{0, 0}
@@ -133,23 +137,15 @@ func getCollageFromData(albums []Album) (*image.RGBA, error) {
 		currentRow := idx / albumsPerRow
 		currentColumn := idx % albumsPerRow
 
-		fmt.Printf("\"%s\",", albums[idx].Image[len(albums[idx].Image)-1].URL)
-		// fmt.Printf("🎇 %s: currentRow: %d   currentColumn: %d\n image: %s \n", albums[idx].Name, currentRow, currentColumn, "NOT_FOUND")
-
-		// for y := 0; y < albumCoverSize; y++ {
-		// 	for x := 0; x < albumCoverSize; x++ {
-		// 		img.Set(x+(currentColumn*albumCoverSize), y+(currentRow*albumCoverSize), imgDownloadRespnose.Img.At(x, y))
-		// 	}
-		// }
-		startingPoint := image.Point{currentColumn * albumCoverSize, currentRow * albumCoverSize}
-		endingPoint := image.Point{albumCoverSize + (currentColumn * albumCoverSize), albumCoverSize + (currentRow * albumCoverSize)}
+		startingPoint := image.Point{currentColumn * AlbumCoverSize, currentRow * AlbumCoverSize}
+		endingPoint := image.Point{AlbumCoverSize + (currentColumn * AlbumCoverSize), AlbumCoverSize + (currentRow * AlbumCoverSize)}
 		r := image.Rectangle{startingPoint, endingPoint}
 		draw.Draw(img, r, imgDownloadRespnose.Img, imgDownloadRespnose.Img.Bounds().Min, draw.Src)
 
 		// Draw a shadow behind the text
 		textShadow := image.Rectangle{
 			Min: startingPoint,
-			Max: image.Point{endingPoint.X, currentRow*albumCoverSize + 38},
+			Max: image.Point{endingPoint.X, currentRow*AlbumCoverSize + 38},
 		}
 		shadowColor := color.NRGBA{0, 0, 0, 60}
 		draw.Draw(img, textShadow, &image.Uniform{shadowColor}, image.ZP, draw.Over)
@@ -157,9 +153,9 @@ func getCollageFromData(albums []Album) (*image.RGBA, error) {
 		albumLabel := albums[idx].Name
 		artistlabel := albums[idx].Artist.Name
 		playCountlabel := fmt.Sprintf("Plays: %d", albums[idx].PlayCount)
-		addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+10, albumLabel)
-		addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+22, artistlabel)
-		addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+34, playCountlabel)
+		addLabel(img, currentColumn*AlbumCoverSize+2, currentRow*AlbumCoverSize, albumLabel)
+		addLabel(img, currentColumn*AlbumCoverSize+2, currentRow*AlbumCoverSize+12, artistlabel)
+		addLabel(img, currentColumn*AlbumCoverSize+2, currentRow*AlbumCoverSize+24, playCountlabel)
 	}
 
 	return img, nil
@@ -200,13 +196,32 @@ func getImageFromURL(url string) (image.Image, error) {
 
 func addLabel(img *image.RGBA, x, y int, label string) {
 	col := color.RGBA{255, 255, 255, 255}
-	point := fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)}
 
-	d := &font.Drawer{
-		Dst:  img,
-		Src:  image.NewUniform(col),
-		Face: basicfont.Face7x13,
-		Dot:  point,
+	f := getFontContext()
+	pt := freetype.Pt(x, y+int(f.PointToFixed(12)>>6))
+	f.SetClip(img.Bounds())
+	f.SetDst(img)
+	f.SetSrc(image.NewUniform(col))
+	f.DrawString(label, pt)
+}
+
+func initializeFont() error {
+	fontBytes, err := ioutil.ReadFile(FontFile)
+	if err != nil {
+		return err
 	}
-	d.DrawString(label)
+	font, err = freetype.ParseFont(fontBytes)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func getFontContext() *freetype.Context {
+	c := freetype.NewContext()
+	c.SetDPI(72)
+	c.SetFont(font)
+	c.SetFontSize(12)
+
+	return c
 }
