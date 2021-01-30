@@ -12,7 +12,7 @@ import (
 	"github.com/golang/freetype"
 )
 
-func BuildCollageFromData(albums []lastfm.Album, gridSize int) (*image.RGBA, error) {
+func BuildCollageFromData(albums []lastfm.Album, gridSize int, includeLabel bool) (*image.RGBA, error) {
 
 	const albumCoverSize = config.AlbumCoverSize
 
@@ -40,23 +40,28 @@ func BuildCollageFromData(albums []lastfm.Album, gridSize int) (*image.RGBA, err
 		r := image.Rectangle{startingPoint, endingPoint}
 		draw.Draw(img, r, imgDownloadRespnose.Img, imgDownloadRespnose.Img.Bounds().Min, draw.Src)
 
-		// Draw a shadow behind the text
-		textShadow := image.Rectangle{
-			Min: startingPoint,
-			Max: image.Point{endingPoint.X, currentRow*config.AlbumCoverSize + 38},
-		}
-		shadowColor := color.NRGBA{0, 0, 0, 60}
-		draw.Draw(img, textShadow, &image.Uniform{shadowColor}, image.ZP, draw.Over)
+		if includeLabel {
+			addLabelBackground(img, startingPoint, image.Point{endingPoint.X, currentRow*config.AlbumCoverSize + 38})
 
-		albumLabel := albums[idx].Name
-		artistlabel := albums[idx].Artist.Name
-		playCountlabel := fmt.Sprintf("Plays: %d", albums[idx].PlayCount)
-		addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize, albumLabel)
-		addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+12, artistlabel)
-		addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+24, playCountlabel)
+			albumLabel := albums[idx].Name
+			artistlabel := albums[idx].Artist.Name
+			playCountlabel := fmt.Sprintf("Plays: %d", albums[idx].PlayCount)
+			addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize, albumLabel)
+			addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+12, artistlabel)
+			addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+24, playCountlabel)
+		}
 	}
 
 	return img, nil
+}
+
+func addLabelBackground(img draw.Image, min, max image.Point) {
+	textShadow := image.Rectangle{
+		Min: min,
+		Max: max,
+	}
+	shadowColor := color.NRGBA{0, 0, 0, 60}
+	draw.Draw(img, textShadow, &image.Uniform{shadowColor}, image.ZP, draw.Over)
 }
 
 func addLabel(img *image.RGBA, x, y int, label string) {

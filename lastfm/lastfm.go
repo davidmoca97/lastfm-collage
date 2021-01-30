@@ -37,9 +37,10 @@ type AlbumCoverDownloaderResponse struct {
 }
 
 type GetTopAlbumsConfig struct {
-	Username string
-	Grid     int
-	Period   string
+	Username      string
+	Grid          int
+	Period        string
+	IncludeLabels bool
 }
 
 func GetTopAlbums(configuration GetTopAlbumsConfig) ([]Album, error) {

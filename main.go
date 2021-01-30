@@ -40,7 +40,7 @@ func getCollage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	img, err := collagebuilder.BuildCollageFromData(topAlbums, params.Grid)
+	img, err := collagebuilder.BuildCollageFromData(topAlbums, params.Grid, params.IncludeLabels)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -53,6 +53,7 @@ func getAndValidateParams(r *http.Request) (lastfm.GetTopAlbumsConfig, error) {
 	username := r.URL.Query().Get("username")
 	grid := r.URL.Query().Get("grid")
 	period := r.URL.Query().Get("period")
+	includeLabels := r.URL.Query().Get("includeLabels")
 
 	var validGridSizes = []int{4, 9, 16, 25, 36, 49, 64, 81, 100}
 	var validPeriods = []string{"overall", "7day", "1month", "3month", "6month", "12month"}
@@ -88,6 +89,11 @@ func getAndValidateParams(r *http.Request) (lastfm.GetTopAlbumsConfig, error) {
 		return lastfm.GetTopAlbumsConfig{}, fmt.Errorf("Invalid \"period\" param. The value must be any of these values: %v", validPeriods)
 	}
 
-	return lastfm.GetTopAlbumsConfig{Username: username, Grid: gridInt, Period: period}, nil
+	includeLabelsBool, err := strconv.ParseBool(includeLabels)
+	if err != nil {
+		return lastfm.GetTopAlbumsConfig{}, fmt.Errorf("Invalid \"includeLabels\" param. The value must be a boolean")
+	}
+
+	return lastfm.GetTopAlbumsConfig{Username: username, Grid: gridInt, Period: period, IncludeLabels: includeLabelsBool}, nil
 
 }
