@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	_ "image/gif"
 	_ "image/jpeg"
 	"image/png"
 	"net/http"
+	"strconv"
 
 	"github.com/davidmoca97/lastfm-collage/collagebuilder"
 	"github.com/davidmoca97/lastfm-collage/lastfm"
@@ -24,24 +27,67 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 func getCollage(w http.ResponseWriter, r *http.Request) {
-	username := r.URL.Query().Get("username")
 
-	if username == "" {
-		http.Error(w, "Username was not provided", http.StatusBadRequest)
+	params, err := getAndValidateParams(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	topAlbums, err := lastfm.GetTopAlbums(username)
+	topAlbums, err := lastfm.GetTopAlbums(params)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	img, err := collagebuilder.BuildCollageFromData(topAlbums)
+	img, err := collagebuilder.BuildCollageFromData(topAlbums, params.Grid)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	png.Encode(w, img)
 	w.Header().Add("Content-Type", "image/png")
+}
+
+func getAndValidateParams(r *http.Request) (lastfm.GetTopAlbumsConfig, error) {
+	username := r.URL.Query().Get("username")
+	grid := r.URL.Query().Get("grid")
+	period := r.URL.Query().Get("period")
+
+	var validGridSizes = []int{4, 9, 16, 25, 36, 49, 64, 81, 100}
+	var validPeriods = []string{"overall", "7day", "1month", "3month", "6month", "12month"}
+
+	if username == "" {
+		return lastfm.GetTopAlbumsConfig{}, errors.New("Invalid \"username\" param. You must provide it")
+	}
+
+	gridInt, err := strconv.Atoi(grid)
+	if err != nil {
+		return lastfm.GetTopAlbumsConfig{}, errors.New("Invalid \"grid\" param. It must be an integer")
+	}
+
+	valid := false
+	for _, size := range validGridSizes {
+		if gridInt == size {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return lastfm.GetTopAlbumsConfig{}, fmt.Errorf("Invalid \"grid\" param. The value must be any of these values: %v", validGridSizes)
+	}
+
+	valid = false
+	for _, p := range validPeriods {
+		if period == p {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return lastfm.GetTopAlbumsConfig{}, fmt.Errorf("Invalid \"period\" param. The value must be any of these values: %v", validPeriods)
+	}
+
+	return lastfm.GetTopAlbumsConfig{Username: username, Grid: gridInt, Period: period}, nil
+
 }

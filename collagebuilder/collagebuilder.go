@@ -12,11 +12,11 @@ import (
 	"github.com/golang/freetype"
 )
 
-func BuildCollageFromData(albums []lastfm.Album) (*image.RGBA, error) {
+func BuildCollageFromData(albums []lastfm.Album, gridSize int) (*image.RGBA, error) {
 
 	const albumCoverSize = config.AlbumCoverSize
 
-	albumsPerRow := int(math.Sqrt(float64(config.DefaultGrid)))
+	albumsPerRow := int(math.Sqrt(float64(gridSize)))
 	width := albumsPerRow * config.AlbumCoverSize
 	height := width
 
