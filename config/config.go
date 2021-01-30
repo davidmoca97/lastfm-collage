@@ -1,9 +1,12 @@
 package config
 
 import (
+	"fmt"
+	"image"
 	"io/ioutil"
 	"log"
 
+	"github.com/davidmoca97/lastfm-collage/util"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
 )
@@ -16,12 +19,21 @@ const AlbumCoverSize = 300
 const FontFile = "./static/fonts/Lato-Medium.ttf"
 
 var Font *truetype.Font
+var DefaultAlbumCover image.Image
 
 func init() {
 	if err := initializeFont(); err != nil {
-		log.Println("Error loading font:", err)
+		log.Fatal("Error loading font:", err)
 		return
 	}
+
+	defaultImageURL := fmt.Sprintf("https://via.placeholder.com/%dx%d?text=Unknown+album+cover", AlbumCoverSize, AlbumCoverSize)
+	img, err := util.GetImageFromURL(defaultImageURL)
+	if err != nil {
+		log.Fatal("Error loading default album cover image")
+		return
+	}
+	DefaultAlbumCover = img
 }
 
 func initializeFont() error {

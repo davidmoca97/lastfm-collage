@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/davidmoca97/lastfm-collage/config"
+	"github.com/davidmoca97/lastfm-collage/util"
 )
 
 type Album struct {
@@ -53,8 +54,12 @@ func GetTopAlbums(configuration GetTopAlbumsConfig) ([]Album, error) {
 	}
 
 	decoder := json.NewDecoder(r.Body)
+	// fmt.Println(getURL(configuration))
 	decoder.Decode(&lastFMResponse)
+	// fmt.Println(lastFMResponse.TopAlbums)
 	defer r.Body.Close()
+	lastFMResponse.TopAlbums.Album[10].Image[len(lastFMResponse.TopAlbums.Album[10].Image)-1].URL = ""
+	lastFMResponse.TopAlbums.Album[11].Image[len(lastFMResponse.TopAlbums.Album[11].Image)-1].URL = "https://www.callicoder.com/golang-pointers/"
 	return lastFMResponse.TopAlbums.Album, nil
 }
 
@@ -64,8 +69,20 @@ func getURL(configuration GetTopAlbumsConfig) string {
 
 func DownloadAlbumCovers(albums []Album, c chan<- AlbumCoverDownloaderResponse) {
 	for idx, album := range albums {
-		albumCoverURL := album.Image[len(album.Image)-1].URL
-		img, err := getImageFromURL(albumCoverURL)
+
+		var img image.Image
+		var err error
+		var albumCoverURL string
+		if len(album.Image) > 0 {
+			albumCoverURL = album.Image[len(album.Image)-1].URL
+		}
+
+		if albumCoverURL != "" {
+			img, err = util.GetImageFromURL(albumCoverURL)
+		} else {
+			img = config.DefaultAlbumCover
+		}
+
 		c <- AlbumCoverDownloaderResponse{
 			Img: img,
 			Err: err,
@@ -74,23 +91,4 @@ func DownloadAlbumCovers(albums []Album, c chan<- AlbumCoverDownloaderResponse) 
 	}
 	fmt.Println("Downloaded everything")
 	close(c)
-}
-
-func getImageFromURL(url string) (image.Image, error) {
-	var img image.Image
-	r, err := http.Get(url)
-	if err != nil {
-		return img, err
-	}
-	if r.StatusCode != http.StatusOK {
-		return img, fmt.Errorf("Something wrong happened while getting the image from %s", url)
-	}
-
-	img, _, err = image.Decode(r.Body)
-	defer r.Body.Close()
-	if err != nil {
-		return img, fmt.Errorf("Error while decoding the image from %s: %s", url, err)
-	}
-
-	return img, nil
 }
