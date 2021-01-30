@@ -29,9 +29,6 @@ func BuildCollageFromData(albums []lastfm.Album, gridSize int) (*image.RGBA, err
 	go lastfm.DownloadAlbumCovers(albums, c)
 
 	for imgDownloadRespnose := range c {
-		if imgDownloadRespnose.Err != nil {
-			return nil, imgDownloadRespnose.Err
-		}
 
 		idx := imgDownloadRespnose.Idx
 

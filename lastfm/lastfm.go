@@ -34,7 +34,6 @@ type LastFMResponse struct {
 type AlbumCoverDownloaderResponse struct {
 	Idx int
 	Img image.Image
-	Err error
 }
 
 type GetTopAlbumsConfig struct {
@@ -54,12 +53,8 @@ func GetTopAlbums(configuration GetTopAlbumsConfig) ([]Album, error) {
 	}
 
 	decoder := json.NewDecoder(r.Body)
-	// fmt.Println(getURL(configuration))
 	decoder.Decode(&lastFMResponse)
-	// fmt.Println(lastFMResponse.TopAlbums)
 	defer r.Body.Close()
-	lastFMResponse.TopAlbums.Album[10].Image[len(lastFMResponse.TopAlbums.Album[10].Image)-1].URL = ""
-	lastFMResponse.TopAlbums.Album[11].Image[len(lastFMResponse.TopAlbums.Album[11].Image)-1].URL = "https://www.callicoder.com/golang-pointers/"
 	return lastFMResponse.TopAlbums.Album, nil
 }
 
@@ -73,22 +68,21 @@ func DownloadAlbumCovers(albums []Album, c chan<- AlbumCoverDownloaderResponse) 
 		var img image.Image
 		var err error
 		var albumCoverURL string
+
 		if len(album.Image) > 0 {
 			albumCoverURL = album.Image[len(album.Image)-1].URL
 		}
-
 		if albumCoverURL != "" {
 			img, err = util.GetImageFromURL(albumCoverURL)
-		} else {
+		}
+		if albumCoverURL == "" || err != nil {
 			img = config.DefaultAlbumCover
 		}
 
 		c <- AlbumCoverDownloaderResponse{
 			Img: img,
-			Err: err,
 			Idx: idx,
 		}
 	}
-	fmt.Println("Downloaded everything")
 	close(c)
 }
