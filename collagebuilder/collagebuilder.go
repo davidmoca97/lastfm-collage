@@ -45,7 +45,7 @@ func BuildCollageFromData(albums []lastfm.Album, gridSize int, includeLabel bool
 
 			albumLabel := albums[idx].Name
 			artistlabel := albums[idx].Artist.Name
-			playCountlabel := fmt.Sprintf("Plays: %d", albums[idx].PlayCount)
+			playCountlabel := fmt.Sprintf("%d plays", albums[idx].PlayCount)
 			addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize, albumLabel)
 			addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+12, artistlabel)
 			addLabel(img, currentColumn*albumCoverSize+2, currentRow*albumCoverSize+24, playCountlabel)
