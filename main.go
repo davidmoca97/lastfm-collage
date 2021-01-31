@@ -16,14 +16,18 @@ import (
 
 func main() {
 	router := mux.NewRouter()
-	router.HandleFunc("/", index)
+
+	staticDir := "/static/"
+	router.
+		PathPrefix(staticDir).
+		Handler(http.StripPrefix(staticDir, http.FileServer(http.Dir("."+staticDir))))
+	router.HandleFunc("/", index).Methods(http.MethodGet)
 	router.HandleFunc("/collage", getCollage).Methods(http.MethodGet)
 	http.ListenAndServe(":9999", router)
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	w.Write([]byte(`{"message": "hola"}`))
+	http.ServeFile(w, r, "./static/index.html")
 }
 
 func getCollage(w http.ResponseWriter, r *http.Request) {
