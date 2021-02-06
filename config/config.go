@@ -34,10 +34,10 @@ func init() {
 
 	key, exists = os.LookupEnv("PORT")
 	if !exists {
-		log.Fatal("Error: No LastFM Api key was provided")
-		return
+		Port = "9999"
+	} else {
+		Port = key
 	}
-	LastFMApiKey = key
 
 	if err := initializeFont(); err != nil {
 		log.Fatal("Error loading font:", err)
