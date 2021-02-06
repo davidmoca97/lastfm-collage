@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/davidmoca97/lastfm-collage/collagebuilder"
+	"github.com/davidmoca97/lastfm-collage/config"
 	"github.com/davidmoca97/lastfm-collage/lastfm"
 	"github.com/gorilla/mux"
 )
@@ -23,7 +24,7 @@ func main() {
 		Handler(http.StripPrefix(staticDir, http.FileServer(http.Dir("."+staticDir))))
 	router.HandleFunc("/", index).Methods(http.MethodGet)
 	router.HandleFunc("/collage", getCollage).Methods(http.MethodGet)
-	http.ListenAndServe(":9999", router)
+	http.ListenAndServe(":"+config.Port, router)
 }
 
 func index(w http.ResponseWriter, r *http.Request) {

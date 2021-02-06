@@ -18,13 +18,21 @@ const FontFile = "./static/fonts/Lato-Medium.ttf"
 
 var (
 	LastFMApiKey      string
+	Port              string
 	Font              *truetype.Font
 	DefaultAlbumCover image.Image
 )
 
 func init() {
 
-	key, exists := os.LookupEnv("LastFMApiKey")
+	key, exists := os.LookupEnv("LAST_FM_APY_KEY")
+	if !exists {
+		log.Fatal("Error: No LastFM Api key was provided")
+		return
+	}
+	LastFMApiKey = key
+
+	key, exists = os.LookupEnv("PORT")
 	if !exists {
 		log.Fatal("Error: No LastFM Api key was provided")
 		return
