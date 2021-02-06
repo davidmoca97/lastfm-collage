@@ -5,23 +5,32 @@ import (
 	"image"
 	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/davidmoca97/lastfm-collage/util"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
 )
 
-const DefaultGrid = 25
 const LastFmApiUrl = "https://ws.audioscrobbler.com/2.0"
-const DefaultPeriod = "12month"
-const LastFMApiKey = ""
 const AlbumCoverSize = 300
 const FontFile = "./static/fonts/Lato-Medium.ttf"
 
-var Font *truetype.Font
-var DefaultAlbumCover image.Image
+var (
+	LastFMApiKey      string
+	Font              *truetype.Font
+	DefaultAlbumCover image.Image
+)
 
 func init() {
+
+	key, exists := os.LookupEnv("LastFMApiKey")
+	if !exists {
+		log.Fatal("Error: No LastFM Api key was provided")
+		return
+	}
+	LastFMApiKey = key
+
 	if err := initializeFont(); err != nil {
 		log.Fatal("Error loading font:", err)
 		return
@@ -30,10 +39,11 @@ func init() {
 	defaultImageURL := fmt.Sprintf("https://via.placeholder.com/%dx%d?text=Unknown+album+cover", AlbumCoverSize, AlbumCoverSize)
 	img, err := util.GetImageFromURL(defaultImageURL)
 	if err != nil {
-		log.Fatal("Error loading default album cover image")
+		log.Fatal("Error loading default album cover image. Error:", err)
 		return
 	}
 	DefaultAlbumCover = img
+
 }
 
 func initializeFont() error {
