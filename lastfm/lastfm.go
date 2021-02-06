@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"net/http"
+	"sync"
 
 	"github.com/davidmoca97/lastfm-collage/config"
 	"github.com/davidmoca97/lastfm-collage/util"
@@ -64,26 +65,31 @@ func getURL(configuration GetTopAlbumsConfig) string {
 }
 
 func DownloadAlbumCovers(albums []Album, c chan<- AlbumCoverDownloaderResponse) {
+	var wg sync.WaitGroup
+	wg.Add(len(albums))
 	for idx, album := range albums {
+		go func(idx int, album Album) {
+			var img image.Image
+			var err error
+			var albumCoverURL string
 
-		var img image.Image
-		var err error
-		var albumCoverURL string
+			if len(album.Image) > 0 {
+				albumCoverURL = album.Image[len(album.Image)-1].URL
+			}
+			if albumCoverURL != "" {
+				img, err = util.GetImageFromURL(albumCoverURL)
+			}
+			if albumCoverURL == "" || err != nil {
+				img = config.DefaultAlbumCover
+			}
 
-		if len(album.Image) > 0 {
-			albumCoverURL = album.Image[len(album.Image)-1].URL
-		}
-		if albumCoverURL != "" {
-			img, err = util.GetImageFromURL(albumCoverURL)
-		}
-		if albumCoverURL == "" || err != nil {
-			img = config.DefaultAlbumCover
-		}
-
-		c <- AlbumCoverDownloaderResponse{
-			Img: img,
-			Idx: idx,
-		}
+			c <- AlbumCoverDownloaderResponse{
+				Img: img,
+				Idx: idx,
+			}
+			wg.Done()
+		}(idx, album)
 	}
+	wg.Wait()
 	close(c)
 }

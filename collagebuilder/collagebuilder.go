@@ -17,7 +17,7 @@ func BuildCollageFromData(albums []lastfm.Album, gridSize int, includeLabel bool
 	const albumCoverSize = config.AlbumCoverSize
 
 	albumsPerRow := int(math.Sqrt(float64(gridSize)))
-	width := albumsPerRow * config.AlbumCoverSize
+	width := albumsPerRow * albumCoverSize
 	height := width
 
 	upLeft := image.Point{0, 0}
